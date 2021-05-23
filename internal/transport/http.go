@@ -1,6 +1,7 @@
 package http
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -13,6 +14,11 @@ import (
 type Handler struct {
 	Router  *mux.Router
 	Service *comment.Service
+}
+
+// Response - object to store responses from our API
+type Response struct {
+	Message string
 }
 
 // NewHandler - returns a pointer to a new Handler
@@ -34,12 +40,19 @@ func (handler *Handler) SetupRoutes() {
 	handler.Router.HandleFunc("/api/comment/{id}", handler.DeleteComment).Methods("DELETE")
 
 	handler.Router.HandleFunc("/api/health", func(writer http.ResponseWriter, request *http.Request) {
-		fmt.Fprint(writer, "I am alive!")
+		writer.Header().Set("Content-Type", "application/json; charset=UTF-8")
+		writer.WriteHeader(http.StatusOK)
+		if err := json.NewEncoder(writer).Encode(Response{Message: "I am Alive"}); err != nil {
+			panic(err)
+		}
 	})
 }
 
 // GetComment - retrieve comment by ID
 func (handler *Handler) GetComment(writer http.ResponseWriter, request *http.Request) {
+	writer.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	writer.WriteHeader(http.StatusOK)
+
 	vars := mux.Vars(request)
 	id := vars["id"]
 
@@ -53,44 +66,76 @@ func (handler *Handler) GetComment(writer http.ResponseWriter, request *http.Req
 		fmt.Fprintf(writer, "Error Retrieving Comment by ID")
 	}
 
-	fmt.Fprintf(writer, "%+v", comment)
+	if err := json.NewEncoder(writer).Encode(comment); err != nil {
+		panic(err)
+	}
 }
 
 // GetAllComments - retrives all comments from the comment server
 func (handler *Handler) GetAllComments(writer http.ResponseWriter, request *http.Request) {
+	writer.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	writer.WriteHeader(http.StatusOK)
 	comments, err := handler.Service.GetAllComments()
 	if err != nil {
 		fmt.Fprintf(writer, "Failed to retrieve all comments")
 	}
-	fmt.Fprintf(writer, "%+v", comments)
+
+	if err := json.NewEncoder(writer).Encode(comments); err != nil {
+		panic(err)
+	}
 }
 
 // PostComment - adds new comment
 func (handler *Handler) PostComment(writer http.ResponseWriter, request *http.Request) {
-	comment, err := handler.Service.PostComment(comment.Comment{
-		Slug: "/",
-	})
+	writer.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	writer.WriteHeader(http.StatusOK)
+
+	var comment comment.Comment
+	if err := json.NewDecoder(request.Body).Decode(&comment); err != nil {
+		fmt.Fprintf(writer, "Failed to decode JSON body")
+	}
+	comment, err := handler.Service.PostComment(comment)
 
 	if err != nil {
 		fmt.Fprintf(writer, "Failed to post new comment")
 	}
-	fmt.Fprintf(writer, "%+v", comment)
+	if err := json.NewEncoder(writer).Encode(comment); err != nil {
+		panic(err)
+	}
 }
 
 // UpdateComment - updates a comment by ID
 func (handler *Handler) UpdateComment(writer http.ResponseWriter, request *http.Request) {
-	comment, err := handler.Service.UpdateComment(1, comment.Comment{
-		Slug: "/",
-	})
+	writer.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	writer.WriteHeader(http.StatusOK)
+
+	var comment comment.Comment
+	if err := json.NewDecoder(request.Body).Decode(&comment); err != nil {
+		fmt.Fprintf(writer, "Failed to decode JSON body")
+	}
+
+	vars := mux.Vars(request)
+	id := vars["id"]
+	commentID, err := strconv.ParseUint(id, 10, 64)
+	if err != nil {
+		fmt.Fprintf(writer, "Failed to parse uint from ID")
+	}
+
+	comment, err = handler.Service.UpdateComment(uint(commentID), comment)
 
 	if err != nil {
 		fmt.Fprintf(writer, "Failed to update comment")
 	}
-	fmt.Fprintf(writer, "%+v", comment)
+	if err := json.NewEncoder(writer).Encode(comment); err != nil {
+		panic(err)
+	}
 }
 
 // DeleteComment - deletes a comment by ID
 func (handler *Handler) DeleteComment(writer http.ResponseWriter, request *http.Request) {
+	writer.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	writer.WriteHeader(http.StatusOK)
+
 	vars := mux.Vars(request)
 	id := vars["id"]
 	commentID, err := strconv.ParseUint(id, 10, 64)
@@ -102,5 +147,7 @@ func (handler *Handler) DeleteComment(writer http.ResponseWriter, request *http.
 	if err != nil {
 		fmt.Fprintf(writer, "Failed to delete comment by ID")
 	}
-	fmt.Fprintf(writer, "Successfully deleted comment")
+	if err := json.NewEncoder(writer).Encode(Response{Message: "Comment successfully deleted"}); err != nil {
+		panic(err)
+	}
 }
