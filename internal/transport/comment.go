@@ -2,52 +2,12 @@ package http
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strconv"
 
 	"github.com/decodermg/golang-rest-api/internal/comment"
 	"github.com/gorilla/mux"
 )
-
-// Handler - stores pointer to our comments service
-type Handler struct {
-	Router  *mux.Router
-	Service *comment.Service
-}
-
-// Response - object to store responses from our API
-type Response struct {
-	Message string
-	Error   string
-}
-
-// NewHandler - returns a pointer to a new Handler
-func NewHandler(service *comment.Service) *Handler {
-	return &Handler{
-		Service: service,
-	}
-}
-
-// SetupRouters - sets up all the routes for our application
-func (handler *Handler) SetupRoutes() {
-	fmt.Println("Setting Up Routes")
-	handler.Router = mux.NewRouter()
-
-	handler.Router.HandleFunc("/api/comment/{id}", handler.GetAllComments).Methods("GET")
-	handler.Router.HandleFunc("/api/comment/{id}", handler.PostComment).Methods("POST")
-	handler.Router.HandleFunc("/api/comment/{id}", handler.GetComment).Methods("GET")
-	handler.Router.HandleFunc("/api/comment/{id}", handler.UpdateComment).Methods("PUT")
-	handler.Router.HandleFunc("/api/comment/{id}", handler.DeleteComment).Methods("DELETE")
-
-	handler.Router.HandleFunc("/api/health", func(writer http.ResponseWriter, request *http.Request) {
-		writer.Header().Set("Content-Type", "application/json; charset=UTF-8")
-		writer.WriteHeader(http.StatusOK)
-		if err := json.NewEncoder(writer).Encode(Response{Message: "I am Alive"}); err != nil {
-			panic(err)
-		}
-	})
-}
 
 // GetComment - retrieve comment by ID
 func (handler *Handler) GetComment(writer http.ResponseWriter, request *http.Request) {
@@ -149,13 +109,6 @@ func (handler *Handler) DeleteComment(writer http.ResponseWriter, request *http.
 		sendErrorResponse(writer, "Failed to delete comment by ID", err)
 	}
 	if err := json.NewEncoder(writer).Encode(Response{Message: "Comment successfully deleted"}); err != nil {
-		panic(err)
-	}
-}
-
-func sendErrorResponse(writer http.ResponseWriter, message string, err error) {
-	writer.WriteHeader(http.StatusInternalServerError)
-	if err := json.NewEncoder(writer).Encode(Response{Message: message, Error: err.Error()}); err != nil {
 		panic(err)
 	}
 }
